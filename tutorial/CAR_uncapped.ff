@@ -1,0 +1,48 @@
+; CAR_uncapped.ff reworked from CAR.ff to delete cap atoms, by seppeverheyen at 2026-07-09 19:12:50.377522
+; test_carbamate_geomopt_RESP_GMX.itp created by acpype (v: 2023.10.27) on Thu Jul  9 19:07:35 2026
+
+;[ atomtypes ]
+;;name   bond_type     mass     charge   ptype   sigma         epsilon       Amb
+; C        C           0.00000  0.00000   A     3.39967e-01   3.59824e-01 ; 1.91  0.0860
+; N        N           0.00000  0.00000   A     3.25000e-01   7.11280e-01 ; 1.82  0.1700
+; H1       H1          0.00000  0.00000   A     2.47135e-01   6.56888e-02 ; 1.39  0.0157
+; O        O           0.00000  0.00000   A     2.95992e-01   8.78640e-01 ; 1.66  0.2100
+; OS       OS          0.00000  0.00000   A     3.00001e-01   7.11280e-01 ; 1.68  0.1700
+; CT       CT          0.00000  0.00000   A     3.39967e-01   4.57730e-01 ; 1.91  0.1094
+; H        H           0.00000  0.00000   A     1.06908e-01   6.56888e-02 ; 0.60  0.0157
+
+[ moleculetype ]
+;name            nrexcl
+ CAR 3
+
+[ atoms ]
+;   nr  type  resi  res  atom  cgnr     charge      mass       ; qtot   bond_type
+    1    C     1   CAR     C    1     0.470613     12.01000 ; qtot 0.471
+    2    N     1   CAR     N    2     0.121383     14.01000 ; qtot 0.592
+    3    O     1   CAR     O    3    -0.823271     16.00000 ; qtot 0.390
+    4    H     1   CAR    H2    4     0.231275      1.00800 ; qtot 0.334
+
+[ bonds ]
+;   ai     aj funct   r             k
+    1      2   1    1.3350e-01    4.1003e+05 ;      C - N      
+    1      3   1    1.2290e-01    4.7698e+05 ;      C - O      
+    2      4   1    1.0100e-01    3.6317e+05 ;      N - H2     
+
+[ pairs ]
+;   ai     aj    funct
+    3      4      1 ;      O - H2     
+
+[ angles ]
+;   ai     aj     ak    funct   theta         cth
+    1      2      4      1    1.2000e+02    4.1840e+02 ;      C - N      - H2     
+    2      1      3      1    1.2290e+02    6.6944e+02 ;      N - C      - O      
+
+[ dihedrals ] ; propers
+; for gromacs 4.5 or higher, using funct 9
+;    i      j      k      l   func   phase     kd      pn
+    3      1      2      4      9     0.00   8.36800   1 ;      O-     C-     N-    H2 
+    3      1      2      4      9   180.00  10.46000   2 ;      O-     C-     N-    H2 
+
+[ dihedrals ] ; impropers
+; treated as propers in GROMACS to use correct AMBER analytical function
+;    i      j      k      l   func   phase     kd      pn

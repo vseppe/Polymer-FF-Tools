@@ -1,0 +1,58 @@
+; Link file created for Polyply using ../CAR/CAR_uncapped.ff and ../POL/POL_uncapped.ff, by seppeverheyen at 2026-07-10 15:29:47.532827
+
+[ link ]
+resname "CAR|POL"
+[ atoms ]
+   C { }
+ +O1 { }
+
+[ link ]
+resname "CAR|POL"
+[ bonds ]
+   C   +O1   1    1.3230e-01    3.7656e+05 ;    C -   OS
+
+[ link ]
+resname "CAR|POL"
+[ angles ]
+   N     C   +O1   1  122.90    6.6944e+02 ;    N -    C -   OS
+   O     C   +O1   1  125.00    6.6944e+02 ;    O -    C -   OS
+   C   +O1   +C3   1  117.00    5.0208e+02 ;    C -   OS -   CT
+
+[ link ]
+resname "CAR|POL"
+[ dihedrals ]
+   O     C   +O1   +C3   9  180.00  11.29680   2 {"version": "1"} ;    O -    C -   OS -   CT
+   O     C   +O1   +C3   9  180.00   5.85760   1 {"version": "2"} ;    O -    C -   OS -   CT
+   C   +O1   +C3   +C4   9    0.00   1.60247   3 {"version": "1"} ;    C -   OS -   CT -   CT
+   C   +O1   +C3   +C4   9  180.00   3.34720   1 {"version": "2"} ;    C -   OS -   CT -   CT
+   C   +O1   +C3   +H7   9    0.00   1.60387   3 {"version": "1"} ;    C -   OS -   CT -   H1
+   C   +O1   +C3   +C5   9    0.00   1.60247   3 {"version": "1"} ;    C -   OS -   CT -   CT
+   C   +O1   +C3   +C5   9  180.00   3.34720   1 {"version": "2"} ;    C -   OS -   CT -   CT
+   N     O     C   +O1   4  180.00  43.93200   2 {"version": "1"} ;    N -    O -    C -   OS
+
+[ link ]
+resname "CAR|POL"
+[ pairs ]
+   C   +C4   1
+   C   +H7   1
+   C   +C5   1
+   N   +C3   1
+   O   +C3   1
+  H2   +O1   1
+
+[ link ]
+resname "CAR|POL"
+[ edges ]
+   C     N
+   C     O
+   N    H2
+   C   +O1
+ +O1   +C3
+ +C3   +C4
+ +C3   +H7
+ +C3   +C5
+ +C4   +H8
+ +C4   +H9
+ +C4  +H10
+ +C5  +H11
+ +C5  +H12

@@ -1,0 +1,74 @@
+; Link file created for Polyply using ../POL/POL_uncapped.ff and ../POL/POL_uncapped.ff, by seppeverheyen at 2026-07-09 18:56:52.627359
+
+[ link ]
+resname "POL"
+[ atoms ]
+  C5 { }
+ +O1 { }
+
+[ link ]
+resname "POL"
+[ bonds ]
+  C5   +O1   1    1.4100e-01    2.6778e+05 ;   CT -   OS
+
+[ link ]
+resname "POL"
+[ angles ]
+  C3    C5   +O1   1  109.50    4.1840e+02 ;   CT -   CT -   OS
+ H11    C5   +O1   1  109.50    4.1840e+02 ;   H1 -   CT -   OS
+ H12    C5   +O1   1  109.50    4.1840e+02 ;   H1 -   CT -   OS
+  C5   +O1   +C3   1  109.50    5.0208e+02 ;   CT -   OS -   CT
+
+[ link ]
+resname "POL"
+[ dihedrals ]
+  O1    C3    C5   +O1   9    0.00   0.60250   3 {"version": "1"} ;   OS -   CT -   CT -   OS
+  O1    C3    C5   +O1   9    0.00   4.91620   2 {"version": "2"} ;   OS -   CT -   CT -   OS
+  C4    C3    C5   +O1   9    0.00   0.65084   3 {"version": "1"} ;   CT -   CT -   CT -   OS
+  H7    C3    C5   +O1   9    0.00   0.00000   3 {"version": "1"} ;   H1 -   CT -   CT -   OS
+  H7    C3    C5   +O1   9    0.00   1.04600   1 {"version": "2"} ;   H1 -   CT -   CT -   OS
+  C3    C5   +O1   +C3   9    0.00   1.60247   3 {"version": "1"} ;   CT -   CT -   OS -   CT
+  C3    C5   +O1   +C3   9  180.00   0.41840   2 {"version": "2"} ;   CT -   CT -   OS -   CT
+ H11    C5   +O1   +C3   9    0.00   1.60387   3 {"version": "1"} ;   H1 -   CT -   OS -   CT
+ H12    C5   +O1   +C3   9    0.00   1.60387   3 {"version": "1"} ;   H1 -   CT -   OS -   CT
+  C5   +O1   +C3   +C4   9    0.00   1.60247   3 {"version": "1"} ;   CT -   OS -   CT -   CT
+  C5   +O1   +C3   +C4   9  180.00   0.41840   2 {"version": "2"} ;   CT -   OS -   CT -   CT
+  C5   +O1   +C3   +H7   9    0.00   1.60387   3 {"version": "1"} ;   CT -   OS -   CT -   H1
+  C5   +O1   +C3   +C5   9    0.00   1.60247   3 {"version": "1"} ;   CT -   OS -   CT -   CT
+  C5   +O1   +C3   +C5   9  180.00   0.41840   2 {"version": "2"} ;   CT -   OS -   CT -   CT
+
+[ link ]
+resname "POL"
+[ pairs ]
+  O1   +O1   1
+  C3   +C3   1
+  C4   +O1   1
+  H7   +O1   1
+  C5   +C4   1
+  C5   +H7   1
+  C5   +C5   1
+ H11   +C3   1
+ H12   +C3   1
+
+[ link ]
+resname "POL"
+[ edges ]
+  O1    C3
+  C3    C4
+  C3    H7
+  C3    C5
+  C4    H8
+  C4    H9
+  C4   H10
+  C5   H11
+  C5   H12
+  C5   +O1
+ +O1   +C3
+ +C3   +C4
+ +C3   +H7
+ +C3   +C5
+ +C4   +H8
+ +C4   +H9
+ +C4  +H10
+ +C5  +H11
+ +C5  +H12

@@ -1,0 +1,3 @@
+# Polyol connections within itself
+C5 O1
+
