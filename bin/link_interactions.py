@@ -206,18 +206,23 @@ def determine_connectivity(itp_file: str, atoms_block: list, bonds_block: list) 
 
     return connectivity
 
-def determine_pair_thresholds(pairs_block: list, connectivity: np.array):
+def determine_pair_thresholds(pairs_block_itp1: list, connectivity_itp1: np.array, pairs_block_itp2: list, connectivity_itp2: np.array):
     """ Determine for which bond count there are pairs in the pairs section. """
     bond_counts = []
-    for line in pairs_block:
-        line_list = line.split()
-        atom_i = int(line_list[0]) - 1
-        atom_j = int(line_list[1]) - 1
-        bond_counts.append(int(connectivity[atom_i, atom_j]))
+    for pairs_block, connectivity in zip([pairs_block_itp1, pairs_block_itp2], [connectivity_itp1, connectivity_itp2]):
+        for line in pairs_block:
+            line_list = line.split()
+            atom_i = int(line_list[0]) - 1
+            atom_j = int(line_list[1]) - 1
+            bond_counts.append(int(connectivity[atom_i, atom_j]))
+    
+    # If there are no bond counts, (because both residues are too small perhaps), take the default of 3
+    if bond_counts:
+        pair_threshold_min = min(bond_counts)
+        pair_threshold_max = max(bond_counts)
+    else:
+        (pair_threshold_min, pair_threshold_max) = (3, 3)
         
-    pair_threshold_min = min(bond_counts)
-    pair_threshold_max = max(bond_counts)
-
     return (pair_threshold_min, pair_threshold_max)
 
 def link_atom_names(connections: list, namestoidx_res1: dict, namestoidx_res2: dict, connectivity_res1: np.array, connectivity_res2: np.array, atom_names_res1: list, atom_names_res2: list, bonds_block_int_res1: list, bonds_block_int_res2: list, pair_thresholds: tuple):
@@ -937,8 +942,8 @@ if __name__ == "__main__":
         atoms_block_int_res2, bonds_block_int_res2, pairs_block_int_res2, namestoidx_res2, atom_types_res2, atom_names_res2 = read_itp_atomsbondspairs(itp_res2_file)
         connectivity_res2 =  determine_connectivity(itp_res2_file, atoms_block_int_res2, bonds_block_int_res2)
 
-    # In this force field, determine for which bond count they are added to pairs. Done for itp1.
-    pair_thresholds = determine_pair_thresholds(pairs_block_int_res1, connectivity_res1)
+    # In this force field, determine for which bond count they are added to pairs.
+    pair_thresholds = determine_pair_thresholds(pairs_block_int_res1, connectivity_res1, pairs_block_int_res2, connectivity_res2)
 
     # Read in connected atom names and determine atom names for atoms, bonds, angles, dihedrals, pairs, and edges between residues
     connections = read_connection_file(connection_atomnames_file, atom_names_res1, atom_names_res2)
