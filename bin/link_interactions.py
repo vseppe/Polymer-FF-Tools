@@ -825,53 +825,100 @@ def retrieve_bonded_parameters(bonds_types: list, angles_types: list, dihedrals_
     return bonds_parameters, angles_parameters, dihedrals_parameters, imp_dihedrals_parameters 
 
 
-def write_atoms_link(atoms_names: list, itp_res1_file: str, itp_res2_file: str, res1_name: str, res2_name: str, link_filename: str):
+def explicit_res(atom_name: str, res1_name: str, res2_name: str, explicit: bool):
+    """ Writes the resname in case explicit is True, in {"resname": "RES1"}, 
+    to prevent wrong residue recognition, instead of the regex resname "RES1|RES2"
+    Based on the + as first character, it decides whether to use RES1 (False) or RES2 (True).
+    """
+    if explicit:
+        # If + is first, this is RES2
+        if atom_name[0] == "+": 
+            res_name = res2_name
+        else:
+            res_name = res1_name
+
+        # Pad with some spaces. Pad so that 4 characters is default width.
+        n_res_padding = 4 - len(res_name)
+        res_padding = n_res_padding * " "
+        explicit_res = f" {{\"resname\": {res_padding}\"{res_name}\"}} "
+    else:
+        # Empty string if not asked
+        explicit_res = ""
+
+    return explicit_res
+
+def write_atoms_link(atoms_names: list, itp_res1_file: str, itp_res2_file: str, res1_name: str, res2_name: str, link_filename: str, explicit: bool):
     """ Write the beginning of the link.ff file and the atoms section. """
 
     with open(link_filename, "w") as f:
         f.write(f"; Link file created for Polyply using {itp_res1_file} and {itp_res2_file}, by {os.getlogin()} at {datetime.datetime.now()}\n\n") # Opening comment
         f.write("[ link ]\n")
-        f.write(write_resnames(res1_name, res2_name)+"\n")
+        f.write(write_resnames(res1_name, res2_name, explicit)+"\n")
         f.write("[ atoms ]\n")
-        for atom in atoms_names:
-            f.write(f"{atom:>4s} {{ }}\n") # Curly brackets after
 
-def write_bonded_terms_link(bonds_names: list, angles_names: list, dihedrals_names: list, imp_dihedrals_names: list, bonds_types: list, angles_types: list, dihedrals_types: list, imp_dihedrals_types: list, bonds_parameters: list, angles_parameters: list, dihedrals_parameters: list, imp_dihedrals_parameters: list, res1_name: str, res2_name: str, link_filename: str):
+        for atom in atoms_names:
+            f.write(f"{atom:>4s}")
+            # If explicit: fill brackets. Else, leave empty
+            if explicit:
+                f.write(explicit_res(atom, res1_name, res2_name, explicit) + "\n")
+            else:
+                f.write(" { } \n")
+
+def write_bonded_terms_link(bonds_names: list, angles_names: list, dihedrals_names: list, imp_dihedrals_names: list, bonds_types: list, angles_types: list, dihedrals_types: list, imp_dihedrals_types: list, bonds_parameters: list, angles_parameters: list, dihedrals_parameters: list, imp_dihedrals_parameters: list, res1_name: str, res2_name: str, link_filename: str, explicit: bool):
     """ Write the bonds, angles, and dihedrals sections in the link.ff file. """
 
     with open(link_filename, "a") as f:
 
         # BONDS
         f.write("\n[ link ]\n")
-        f.write(write_resnames(res1_name, res2_name)+"\n")
+        f.write(write_resnames(res1_name, res2_name, explicit)+"\n")
         f.write("[ bonds ]\n")
         for i, bond_name in enumerate(bonds_names):
             if len(bonds_parameters[i]) > 1:
                 print(f"Warning: More than one parameter set for bond name {bond_name[0]}-{bond_name[1]}, i.e. types {bonds_types[i][0]}-{bonds_types[i][1]}. Make sure there is no double counting.")
 
             for j, bonds_parameter in enumerate(bonds_parameters[i]):
-                bond_line = f"{bond_name[0]:>4s}{bond_name[1]:>6s}{1:>4d}{bonds_parameter[0]:>14.4e}{bonds_parameter[1]:>14.4e} ; {bonds_types[i][0]:>4s} - {bonds_types[i][1]:>4s}\n"
+                bond_line = (
+                    f"{bond_name[0]:>4s}{explicit_res(bond_name[0], res1_name, res2_name, explicit)}"
+                    f"{bond_name[1]:>6s}{explicit_res(bond_name[1], res1_name, res2_name, explicit)}"
+                    f"{1:>4d}{bonds_parameter[0]:>14.4e}{bonds_parameter[1]:>14.4e}"
+                    f" ; {bonds_types[i][0]:>4s} - {bonds_types[i][1]:>4s}\n"
+                    )
                 f.write(bond_line)
             
         # ANGLES
         f.write("\n[ link ]\n")
-        f.write(write_resnames(res1_name, res2_name)+"\n")
+        f.write(write_resnames(res1_name, res2_name, explicit)+"\n")
         f.write("[ angles ]\n")
         for i, angle_name in enumerate(angles_names):
             if len(angles_parameters[i]) > 1:
                 print(f"Warning: More than one parameter set for angle name {angle_name[0]}-{angle_name[1]}-{angle_name[2]}, i.e. types {angles_types[i][0]}-{angles_types[i][1]}-{angles_types[i][2]}. Make sure there is no double counting.")
             for j, angles_parameter in enumerate(angles_parameters[i]):
-                angle_line = f"{angle_name[0]:>4s}{angle_name[1]:>6s}{angle_name[2]:>6s}{1:>4d}{angles_parameter[0]:>8.2f}{angles_parameter[1]:>14.4e} ; {angles_types[i][0]:>4s} - {angles_types[i][1]:>4s} - {angles_types[i][2]:>4s}\n"
+                angle_line = (
+                    f"{angle_name[0]:>4s}{explicit_res(angle_name[0], res1_name, res2_name, explicit)}"
+                    f"{angle_name[1]:>6s}{explicit_res(angle_name[1], res1_name, res2_name, explicit)}"
+                    f"{angle_name[2]:>6s}{explicit_res(angle_name[2], res1_name, res2_name, explicit)}"
+                    f"{1:>4d}{angles_parameter[0]:>8.2f}{angles_parameter[1]:>14.4e}"
+                    f" ; {angles_types[i][0]:>4s} - {angles_types[i][1]:>4s} - {angles_types[i][2]:>4s}\n"
+                    )
                 f.write(angle_line)
 
         # DIHEDRALS: PROPER
         f.write("\n[ link ]\n")
-        f.write(write_resnames(res1_name, res2_name)+"\n")
+        f.write(write_resnames(res1_name, res2_name, explicit)+"\n")
         f.write("[ dihedrals ]\n")
         for i, dihedral_name in enumerate(dihedrals_names):
             for j, dihedrals_parameter in enumerate(dihedrals_parameters[i]): # Multiple functions for one dihedral
                 if not dihedrals_parameter[2] == 8888: # If the phase is 8888, this was the discarded proper dihedral due to improper interference
-                    dihedral_line = f"{dihedral_name[0]:>4s}{dihedral_name[1]:>6s}{dihedral_name[2]:>6s}{dihedral_name[3]:>6s}{9:>4d}{dihedrals_parameter[0]:>8.2f}{dihedrals_parameter[1]:>10.5f}{dihedrals_parameter[2]:>4d} {{\"version\": \"{j+1}\"}} ; {dihedrals_types[i][0]:>4s} - {dihedrals_types[i][1]:>4s} - {dihedrals_types[i][2]:>4s} - {dihedrals_types[i][3]:>4s}\n"
+                    dihedral_line = (
+                        f"{dihedral_name[0]:>4s}{explicit_res(dihedral_name[0], res1_name, res2_name, explicit)}"
+                        f"{dihedral_name[1]:>6s}{explicit_res(dihedral_name[1], res1_name, res2_name, explicit)}"
+                        f"{dihedral_name[2]:>6s}{explicit_res(dihedral_name[2], res1_name, res2_name, explicit)}"
+                        f"{dihedral_name[3]:>6s}{explicit_res(dihedral_name[3], res1_name, res2_name, explicit)}"
+                        f"{9:>4d}{dihedrals_parameter[0]:>8.2f}{dihedrals_parameter[1]:>10.5f}{dihedrals_parameter[2]:>4d}"
+                        f" {{\"version\": \"{j+1}\"}} ; "
+                        f"{dihedrals_types[i][0]:>4s} - {dihedrals_types[i][1]:>4s} - {dihedrals_types[i][2]:>4s} - {dihedrals_types[i][3]:>4s}\n"
+                        )
                     f.write(dihedral_line)
 
         # DIHEDRALS: IMPROPER
@@ -880,38 +927,60 @@ def write_bonded_terms_link(bonds_names: list, angles_names: list, dihedrals_nam
             if len(imp_dihedrals_parameters[i]) > 1:
                 print(f"Warning: More than one parameter set for IMPROPER dihedral name {imp_dihedral_name[0]}-{imp_dihedral_name[1]}-{imp_dihedral_name[2]}-{imp_dihedral_name[3]}, i.e. types {imp_dihedrals_types[i][0]}-{imp_dihedrals_types[i][1]}-{imp_dihedrals_types[i][2]}-{imp_dihedrals_types[i][3]}. This is unusual for IMPROPER dihedrals. Make sure there is no double counting.")
             for j, imp_dihedrals_parameter in enumerate(imp_dihedrals_parameters[i]): 
-                imp_dihedral_line = f"{imp_dihedral_name[0]:>4s}{imp_dihedral_name[1]:>6s}{imp_dihedral_name[2]:>6s}{imp_dihedral_name[3]:>6s}{4:>4d}{imp_dihedrals_parameter[0]:>8.2f}{imp_dihedrals_parameter[1]:>10.5f}{imp_dihedrals_parameter[2]:>4d} {{\"version\": \"{j+1}\"}} ; {imp_dihedrals_types[i][0]:>4s} - {imp_dihedrals_types[i][1]:>4s} - {imp_dihedrals_types[i][2]:>4s} - {imp_dihedrals_types[i][3]:>4s}\n"
+                imp_dihedral_line = (
+                    f"{imp_dihedral_name[0]:>4s}{explicit_res(imp_dihedral_name[0], res1_name, res2_name, explicit)}"
+                    f"{imp_dihedral_name[1]:>6s}{explicit_res(imp_dihedral_name[1], res1_name, res2_name, explicit)}"
+                    f"{imp_dihedral_name[2]:>6s}{explicit_res(imp_dihedral_name[2], res1_name, res2_name, explicit)}"
+                    f"{imp_dihedral_name[3]:>6s}{explicit_res(imp_dihedral_name[3], res1_name, res2_name, explicit)}"
+                    f"{4:>4d}{imp_dihedrals_parameter[0]:>8.2f}"
+                    f"{imp_dihedrals_parameter[1]:>10.5f}{imp_dihedrals_parameter[2]:>4d} {{\"version\": \"{j+1}\"}} ; "
+                    f"{imp_dihedrals_types[i][0]:>4s} - {imp_dihedrals_types[i][1]:>4s} - {imp_dihedrals_types[i][2]:>4s} - {imp_dihedrals_types[i][3]:>4s}\n"
+                    )
                 f.write(imp_dihedral_line)
 
 
-def write_pairs_edges_link(pairs_names: list, edges_names: list, res1_name: str, res2_name: str, link_filename: str):
+def write_pairs_edges_link(pairs_names: list, edges_names: list, res1_name: str, res2_name: str, link_filename: str, explicit: bool):
     """ Writes the pairs and edges sections to the link.ff file. No parameters needed."""
 
     # Pairs
     with open(link_filename, "a") as f:
         f.write("\n[ link ]\n")
-        f.write(write_resnames(res1_name, res2_name)+"\n")
+        f.write(write_resnames(res1_name, res2_name, explicit)+"\n")
         f.write("[ pairs ]\n")
         for pair in pairs_names:
-            f.write(f"{pair[0]:>4s}{pair[1]:>6s}{1:>4d}\n")
+            pair_line = (
+                f"{pair[0]:>4s}{explicit_res(pair[0], res1_name, res2_name, explicit)}"
+                f"{pair[1]:>6s}{explicit_res(pair[1], res1_name, res2_name, explicit)}"
+                f"{1:>4d}\n")
+            f.write(pair_line)
     
     # Edges
     with open(link_filename, "a") as f:
         f.write("\n[ link ]\n")
-        f.write(write_resnames(res1_name, res2_name)+"\n")
+        f.write(write_resnames(res1_name, res2_name, explicit)+"\n")
         f.write("[ edges ]\n")
         for edge in edges_names:
-            f.write(f"{edge[0]:>4s}{edge[1]:>6s}\n")
+            edge_line = (
+                f"{edge[0]:>4s}{explicit_res(edge[0], res1_name, res2_name, explicit)}"
+                f"{edge[1]:>6s}{explicit_res(edge[1], res1_name, res2_name, explicit)}\n")
+            f.write(edge_line)
 
-def write_resnames(res1_name: str, res2_name: str) -> str:
+def write_resnames(res1_name: str, res2_name: str, explicit: bool) -> str:
     """ Writes the resname statement under the link section (by passing on the string).
         If res2_name is same or if it equals res1_name, only 'resname "XXXX"' is written.
-        If not, 'resname "XXX1|XXX2"' is written."""
+        If not, 'resname "XXX1|XXX2"' is written.
+        If explicit is True, this regex line is commented in favor of {"resname": "RES1"} at each atom 
+    """
     
+    # Combine residue names
     if res2_name == "same" or res2_name == res1_name:
         resname_str = f"resname \"{res1_name}\""
     else:
         resname_str = f"resname \"{res1_name}|{res2_name}\""
+
+    # Explicit mode: add comment
+    if explicit:
+        resname_str = "; " + resname_str
 
     return resname_str
 
@@ -957,6 +1026,6 @@ if __name__ == "__main__":
     bonds_parameters, angles_parameters, dihedrals_parameters, imp_dihedrals_parameters = retrieve_bonded_parameters(bonds_types, angles_types, dihedrals_types, imp_dihedrals_types, parent_ff_file, ff_type)
     
     # Write the link file
-    write_atoms_link(atoms_names, itp_res1_file, itp_res2_file, res1_name, res2_name, link_filename)
-    write_bonded_terms_link(bonds_names, angles_names, dihedrals_names, imp_dihedrals_names, bonds_types, angles_types, dihedrals_types, imp_dihedrals_types, bonds_parameters, angles_parameters, dihedrals_parameters, imp_dihedrals_parameters, res1_name, res2_name, link_filename)
-    write_pairs_edges_link(pairs_names, edges_names, res1_name, res2_name, link_filename)
+    write_atoms_link(atoms_names, itp_res1_file, itp_res2_file, res1_name, res2_name, link_filename, explicit)
+    write_bonded_terms_link(bonds_names, angles_names, dihedrals_names, imp_dihedrals_names, bonds_types, angles_types, dihedrals_types, imp_dihedrals_types, bonds_parameters, angles_parameters, dihedrals_parameters, imp_dihedrals_parameters, res1_name, res2_name, link_filename, explicit)
+    write_pairs_edges_link(pairs_names, edges_names, res1_name, res2_name, link_filename, explicit)
