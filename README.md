@@ -30,12 +30,12 @@ Next for this stage, the parent force field needs to be supplied from which the 
 
 For two different residues (e.g. CAR and POL), the command to generate `link_CAR_POL.ff` is
 ```
-python link_interactions_ff.py CAR_uncapped.ff POL_uncapped.ff CAR POL connection_CAR_POL.txt gaff2.dat
+python link_interactions_ff.py -i1 CAR_uncapped.ff -i2 POL_uncapped.ff -r1 CAR -r2 POL -c connection_CAR_POL.txt -p gaff2.dat
 ```
 
 To link a residue with itself (its end to the beginning of a second one), one can either type the same names or type `"same"` as the following.
 ```
-python link_interactions_ff.py CAR_uncapped.ff same CAR same connection_CAR_CAR.txt gaff2.dat
+python link_interactions_ff.py -i1 CAR_uncapped.ff -i2 same -r1 CAR -r2 same -c connection_CAR_CAR.txt -p gaff2.dat
 ```
 
 Currently, the fetching of improper dihedrals is only implemented for parent force field files with GROMACS function `4` form (the same form as the proper dihedral), with the central atom as the third in row. Practically, this will work for Amber force fields such as ff14SB or GAFF2.
