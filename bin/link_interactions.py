@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # title             : link_interactions.py
 # description       : Writes the links.ff file for the polyply input. Either two residues or argument "same" if bonding to itself. Looks in topology files for extra bonded parameters. Supply 3- to 4-lettered resnames or same if same residue.
-# use               : python link_interactions_ff.py $itp_res1_uncapped.ff $itp_res2_uncapped/"same" $resname1 $resname2/"same" $connection_atomnames.txt $parent_forcefield.itp/.dat
+# use               : python link_interactions_ff.py -i1 $itp_res1_uncapped.ff -i2 $itp_res2_uncapped/"same" -r1 $resname1 $resname2/"same" -r2 $connection_atomnames.txt -p $parent_forcefield.itp/.dat [-e]
 # input file        : $itp_res1_uncapped.ff, $itp_res2_uncapped.ff
-# output file       : links.ff
+# output file       : link_${res1}_${res2}.ff
 
 import numpy as np
 import sys
@@ -13,51 +13,54 @@ import os
 import copy
 import re
 from collections import Counter
+import argparse
 from remove_caps_ff import section_block, read_itp_res, find_nonint_lines 
 
 # Functions
 # Inputs:
 def load_input_command():
     """ Process the arguments given in the command line. """
-    if len(sys.argv) != 7:
-        print(f"Usage: {sys.argv[0]} <itp_res1_uncapped.ff> <itp_res2_uncapped.ff>/\"same\" <resname1> <resname2>/\"same\" <connection_atomnames.txt> <parent_forcefield.itp/.dat>")
-        sys.exit(1)
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("-i1", "--itp-res1", type=Path, required=True, help="Uncapped residue file (.itp) for the first residue.")
+    parser.add_argument("-i2", "--itp-res2", type=Path, required=True, help="Uncapped residue file (.itp) for the second residue, or \"same\" if equal to itp-res1.")
+    parser.add_argument("-r1", "--res1-name", type=str, required=True, help="First residue name.")
+    parser.add_argument("-r2", "--res2-name", type=str, required=True, help="Second residue name, or \"same\" if equal to residue 1.")
+    parser.add_argument("-c", "--connection-atomnames", type=Path, required=True, help="File with the atom names to be connected.")
+    parser.add_argument("-p", "--parent-ff", type=Path, required=True, help="Parent force field from which parameters will be extracted for the links.") 
+    parser.add_argument("-e", "--explicit", action="store_true", help="Explicit flag puts {\"resname\": \"RES\"} after every atom, to prevent wrong residue recognition from PolyPly.")
+
+    args = parser.parse_args()
+
+    # Handle the special case of "same"
+    args.itp_res2 = (args.itp_res1 if args.itp_res2 == "same" else Path(args.itp_res2))
+    if args.res2_name == "same":
+        args.res2_name = args.res1_name
+
+    # Make sure Paths exist
+    path_msg = "{} input file {} does not exist on this path."
+    path_msg_same = "{} input file {} does not exist on this path. Either give the name or write \"same\" if within the same residue."
+    path_msg_ff = "{} is not an existing file for the {}. Make sure it is either a .dat file in AMBER style for the bonded (bonds, angles, dihedrals) parameters, or a GROMACS ffbonded.itp type of file (found in gromacs/share/gromacs/top directory)."
+    if not args.itp_res1.is_file():
+        raise FileNotFoundError(path_msg.format("itp-res1", args.itp_res1))
+    if not args.itp_res2.is_file():
+         raise FileNotFoundError(path_msg_same.format("itp-res2", args.itp_res2))
+
+    if not args.connection_atomnames.is_file():
+        raise FileNotFoundError(path_msg.format("Connection_atomnames", args.connection_atomnames))
+
+    if not args.parent_ff.is_file():
+        raise FileNotFoundError(path_msg_ff.format(args.parent_ff, "parent force field file"))
     
-    itp_res1_file = Path(sys.argv[1])
-    itp_res2_file = Path(sys.argv[2])
-    res1_name = sys.argv[3]
-    res2_name = sys.argv[4]
-    connection_atomnames_file = Path(sys.argv[5])
-    parent_ff_file = Path(sys.argv[6])
+    # Residue names may not exceed 4 characters
+    res_msg = "Residue names may not exceed a length of 4 characters. Not {} characters like {} {}."
+    res_msg_same = "Residue names may not exceed a length of 4 characters. Not {} characters like {} {}. Do this or write \"same\" if equal to res1."
+    if len(args.res1_name) > 4:
+        raise ValueError(res_msg.format(len(args.res1_name), "res1_name", args.res1_name))
+    if len(args.res2_name) > 4:
+        raise ValueError(res_msg_same.format(len(args.res2_name), "res2_name", args.res2_name))
 
-    if not itp_res1_file.is_file():
-        print(f"Error: itp_res1_uncapped.ff input file '{itp_res1_file}' does not exist.")
-        sys.exit(1)
-    
-    if not itp_res2_file.is_file():
-        if str(itp_res2_file) == "same":
-            itp_res2_file = itp_res1_file
-        else:
-            print(f"Error: itp_res2_uncapped.ff input file '{itp_res2_file}' does not exist. Either give the name or write \"same\" if within the same residue.")
-            sys.exit(1)
-
-    if len(res1_name) > 4:
-        print(f"Error: Residue names may not exceed a length of 4 characters, not \'{res1_name}\' with length {len(res1_name)}")
-        sys.exit(1)                    
-
-    if len(res2_name) > 4:
-        print(f"Error: Residue names may not exceed a length of 4 characters, not \'{res2_name}\' with length {len(res2_name)}")
-        sys.exit(1)                    
-
-    if not connection_atomnames_file.is_file():
-        print(f"Error: connection_atomnames_file.txt input file '{connection_atomnames_file}' does not exist.")
-        sys.exit(1)
-
-    if not parent_ff_file.is_file():
-        print(f"Error: {parent_ff_file} is not an existing file. Make sure it is either a .dat file in AMBER style for the bonded (bonds, angles, dihedrals) parameters, or a GROMACS ffbonded.itp type of file (found in gromacs/share/gromacs/top directory)")
-        sys.exit(1)
-
-    return itp_res1_file, itp_res2_file, res1_name, res2_name, connection_atomnames_file, parent_ff_file
+    return args.itp_res1, args.itp_res2, args.res1_name, args.res2_name, args.connection_atomnames, args.parent_ff, args.explicit
 
 def ff_type(parent_ff_file: str) -> str:
     """ Determines the type of parent force field file. Either AMBER (.dat) or GROMACS (.itp)."""
@@ -215,14 +218,14 @@ def determine_pair_thresholds(pairs_block_itp1: list, connectivity_itp1: np.arra
             atom_i = int(line_list[0]) - 1
             atom_j = int(line_list[1]) - 1
             bond_counts.append(int(connectivity[atom_i, atom_j]))
-    
+
     # If there are no bond counts, (because both residues are too small perhaps), take the default of 3
     if bond_counts:
         pair_threshold_min = min(bond_counts)
         pair_threshold_max = max(bond_counts)
     else:
         (pair_threshold_min, pair_threshold_max) = (3, 3)
-        
+
     return (pair_threshold_min, pair_threshold_max)
 
 def link_atom_names(connections: list, namestoidx_res1: dict, namestoidx_res2: dict, connectivity_res1: np.array, connectivity_res2: np.array, atom_names_res1: list, atom_names_res2: list, bonds_block_int_res1: list, bonds_block_int_res2: list, pair_thresholds: tuple):
@@ -926,7 +929,7 @@ def link_filename(res1_name: str, res2_name: str) -> str:
 
 if __name__ == "__main__":
     # main: create link.ff file
-    itp_res1_file, itp_res2_file, res1_name, res2_name, connection_atomnames_file, parent_ff_file = load_input_command()
+    itp_res1_file, itp_res2_file, res1_name, res2_name, connection_atomnames_file, parent_ff_file, explicit = load_input_command()
     link_filename = link_filename(res1_name, res2_name)
 
     # Determine type of parent force field file: AMBER (.dat) or GROMACS (.itp)
