@@ -15,7 +15,7 @@ The atom indices (with a 1-based index) of the capping atoms need to be specifie
 In the case of a polyol residue with the force field file called `POL.ff`, this will be
 
 ```
-python remove_caps_ff.py POL.ff capping_idx_POL.txt 
+python remove_caps_ff.py -i POL.ff -c capping_idx_POL.txt 
 ```
 This produces the file `POL_uncapped.ff`, which is a functional force field file for the fragment.
 
