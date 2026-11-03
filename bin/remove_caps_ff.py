@@ -243,7 +243,7 @@ def write_itp_res_uncapped(itp_lines: list, section_linenrs: list, new_atoms: li
     itp_res_uncapped_file = str(itp_res_file)[:-3] + "_uncapped.ff"
 
     # Combining sections
-    notice = [f"; {itp_res_uncapped_file} reworked from {itp_res_file} to delete cap atoms, by {os.getlogin()} at {datetime.datetime.now()}\n"]
+    notice = [f"; {itp_res_uncapped_file} reworked from {itp_res_file} to delete cap atoms, by {os.getlogin()} at {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\n"]
     itp_beginning = itp_lines[:min(section_linenrs)]   # the comments etc from original ff file
     moleculetype = section_block(itp_lines, sections, "moleculetype")
     new_itp_lines = notice + itp_beginning + moleculetype + new_atoms + new_bonds + new_pairs + new_angles + new_dihedrals
