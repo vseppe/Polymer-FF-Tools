@@ -235,30 +235,35 @@ def link_atom_names(connections: list, namestoidx_res1: dict, namestoidx_res2: d
     atoms_names = []
     for connection in connections:
         atom_1 = connection[0]
-        atom_2 = "+" + connection[1] # Prepend +
+        atom_2 = ">" + connection[1] # Prepend >. This is also compatible with branching if resid2 > resid1 + 1 
         atoms_names.append(atom_1)
         atoms_names.append(atom_2)
  
     # BONDS
-    bonds_names = copy.deepcopy(connections) # This is the same, but a plus in front of the second atom name. Deepcopy since nested lists.
+    bonds_names = copy.deepcopy(connections) # This is the same, but a > in front of the second atom name. Deepcopy since nested lists.
     for atom in bonds_names:
-        atom[1] = "+" + atom[1] # Prepending + for link file
+        atom[1] = ">" + atom[1] # Prepending > for link file
 
     # EDGES
-    edges_names = []
+    #edges_names = []
     bonds_blocks = [bonds_block_int_res1, bonds_block_int_res2]
     atom_names = [atom_names_res1, atom_names_res2]
-    plusornot = "" # for res1, no plus
-    for i, bonds_block in enumerate(bonds_blocks):
-        for line in bonds_block:
-            line_list = line.split()
-            atom_name_1 = plusornot + atom_names[i][int(line_list[0])-1] # the bonds block has 1-based indices
-            atom_name_2 = plusornot + atom_names[i][int(line_list[1])-1]
-            edges_names.append([atom_name_1, atom_name_2])
 
-        if i == 0:
-            edges_names.extend(bonds_names) # Append the inter-residue bonds in between res1 and res2
-            plusornot = "+" # plus for res2 coming up 
+    # Old method: edges for all bonded residues instead of just cross-residue edges
+    #plusornot = "" # for res1, no plus
+    #for i, bonds_block in enumerate(bonds_blocks):
+    #    for line in bonds_block:
+    #        line_list = line.split()
+    #        atom_name_1 = plusornot + atom_names[i][int(line_list[0])-1] # the bonds block has 1-based indices
+    #        atom_name_2 = plusornot + atom_names[i][int(line_list[1])-1]
+    #        edges_names.append([atom_name_1, atom_name_2])
+
+    #    if i == 0:
+    #        edges_names.extend(bonds_names) # Append the inter-residue bonds in between res1 and res2
+    #        plusornot = ">" # plus for res2 coming up 
+
+    # New method: only cross-residue edges
+    edges_names = copy.deepcopy(bonds_names)
 
 
     # Determining cross-residue connectivity. Should work if multiple connections, but not expected.
@@ -303,14 +308,14 @@ def link_atom_names(connections: list, namestoidx_res1: dict, namestoidx_res2: d
         atom_name_center_res2 = connection[1]
         atom_idx_center_res1 = namestoidx_res1[atom_name_center_res1] - 1 # making 0-based
         atom_idx_center_res2 = namestoidx_res2[atom_name_center_res2] - 1 
-        atom_name_center_res2 = "+" + atom_name_center_res2 # res2 gets a + in front
+        atom_name_center_res2 = ">" + atom_name_center_res2 # res2 gets a > in front
         for res1_border1_el in all_res1_border1[i]: # Z--A-|-B
             atom_name_border_res1 = atom_names_res1[res1_border1_el]
             angle_atom_names = [atom_name_border_res1, atom_name_center_res1, atom_name_center_res2]
             angles_names.append(angle_atom_names)
 
         for res2_border1_el in all_res2_border1[i]: # same for res2, A-|-B--C
-            atom_name_border_res2 = "+" + atom_names_res2[res2_border1_el] # + in front
+            atom_name_border_res2 = ">" + atom_names_res2[res2_border1_el] # > in front
             angle_atom_names = [atom_name_center_res1, atom_name_center_res2, atom_name_border_res2]
             angles_names.append(angle_atom_names)
 
@@ -323,7 +328,7 @@ def link_atom_names(connections: list, namestoidx_res1: dict, namestoidx_res2: d
         atom_name_center_res2 = connection[1]
         atom_idx_center_res1 = namestoidx_res1[atom_name_center_res1] - 1 # making 0-based
         atom_idx_center_res2 = namestoidx_res2[atom_name_center_res2] - 1
-        atom_name_center_res2 = "+" + atom_name_center_res2  # res2 gets a + in front
+        atom_name_center_res2 = ">" + atom_name_center_res2  # res2 gets a > in front
 
         for border1_i, res1_border1_el in enumerate(all_res1_border1[i]): #Z--A-|-B
             atom_name_border1_res1 = atom_names_res1[res1_border1_el]
@@ -334,14 +339,14 @@ def link_atom_names(connections: list, namestoidx_res1: dict, namestoidx_res2: d
                     dihedrals_names.append(dihedral_atom_names)
 
             for res2_border1_el in all_res2_border1[i]: #Z--A-|-B--C
-                atom_name_border2_res1 = "+" + atom_names_res2[res2_border1_el]
+                atom_name_border2_res1 = ">" + atom_names_res2[res2_border1_el]
                 dihedral_atom_names = [atom_name_border1_res1, atom_name_center_res1, atom_name_center_res2, atom_name_border2_res1]
                 dihedrals_names.append(dihedral_atom_names)
             
         for border1_i, res2_border1_el in enumerate(all_res2_border1[i]): # A-|-B--C--D
-            atom_name_border1_res2 = "+" + atom_names_res2[res2_border1_el]
+            atom_name_border1_res2 = ">" + atom_names_res2[res2_border1_el]
             for res2_border2_el in all_res2_border2[i][border1_i]: # element D 
-                atom_name_border2_res2 = "+" + atom_names_res2[res2_border2_el]
+                atom_name_border2_res2 = ">" + atom_names_res2[res2_border2_el]
                 if not atom_name_border2_res2 in [atom_name_center_res1, atom_name_center_res2, atom_name_border1_res2]: # if D is not B
                     dihedral_atom_names = [atom_name_center_res1, atom_name_center_res2, atom_name_border1_res2, atom_name_border2_res2]
                     dihedrals_names.append(dihedral_atom_names)
@@ -354,7 +359,7 @@ def link_atom_names(connections: list, namestoidx_res1: dict, namestoidx_res2: d
         atom_name_center_res2 = connection[1]
         atom_idx_center_res1 = namestoidx_res1[atom_name_center_res1] - 1 # making 0-based
         atom_idx_center_res2 = namestoidx_res2[atom_name_center_res2] - 1
-        atom_name_center_res2 = "+" + atom_name_center_res2  # res2 gets a + in front
+        atom_name_center_res2 = ">" + atom_name_center_res2  # res2 gets a > in front
 
         # Determine bonding partners
         res1_border1_idx = np.where(connectivity_res1[atom_idx_center_res1, :] == 1)[0]
@@ -367,8 +372,8 @@ def link_atom_names(connections: list, namestoidx_res1: dict, namestoidx_res2: d
             imp_dihedrals_names.append(imp_dihedral_atom_names)
 
         if len(res2_border1_idx) == 2: # A-|--^C-B--D and A as third connection
-            atom_name_border_1 = "+" + atom_names_res2[res2_border1_idx[0]] # res2 atoms get a + in front 
-            atom_name_border_2 = "+" + atom_names_res2[res2_border1_idx[1]] 
+            atom_name_border_1 = ">" + atom_names_res2[res2_border1_idx[0]] # res2 atoms get a > in front 
+            atom_name_border_2 = ">" + atom_names_res2[res2_border1_idx[1]] 
             imp_dihedral_atom_names = [atom_name_border_1, atom_name_border_2, atom_name_center_res2, atom_name_center_res1] # The third atom is the center
             imp_dihedrals_names.append(imp_dihedral_atom_names)
 
@@ -388,7 +393,7 @@ def link_atom_names(connections: list, namestoidx_res1: dict, namestoidx_res2: d
                 bonds_apart = connect_center_res1[atomidx_res1] + connect_center_res2[atomidx_res2] + 1 # bonds between atom1 and atom2
                 if bonds_apart in pairs_bond_distance: # if the number of bonds between is in the range of allowed ones
                     atom_name_res1 = atom_names_res1[atomidx_res1]
-                    atom_name_res2 = "+" + atom_names_res2[atomidx_res2]
+                    atom_name_res2 = ">" + atom_names_res2[atomidx_res2]
                     pairs_names.append([atom_name_res1, atom_name_res2])
 
     return atoms_names, bonds_names, angles_names, dihedrals_names, imp_dihedrals_names, pairs_names, edges_names
@@ -403,7 +408,7 @@ def get_atom_types_from_names(bonds_names: list, angles_names: list, dihedrals_n
     for inttype in inttypes: # For bonds, angles, dihedrals
        for term in inttype: # For every "term", eg one bond, one angle, or one dihedral
             for j, name2type in enumerate(term): # For each atom in that term
-                if name2type[0] == "+":  # res2 starts with a plus. Don't use this + in dict
+                if name2type[0] == ">":  # res2 starts with a >. Don't use this > in dict
                     name2type = atom_types_res2[namestoidx_res2[name2type[1:]] - 1] # Replace the name by the type. -1 since this index is 1-based.
                     term[j] = name2type
                 else:
@@ -828,11 +833,11 @@ def retrieve_bonded_parameters(bonds_types: list, angles_types: list, dihedrals_
 def explicit_res(atom_name: str, res1_name: str, res2_name: str, explicit: bool):
     """ Writes the resname in case explicit is True, in {"resname": "RES1"}, 
     to prevent wrong residue recognition, instead of the regex resname "RES1|RES2"
-    Based on the + as first character, it decides whether to use RES1 (False) or RES2 (True).
+    Based on the > as first character, it decides whether to use RES1 (False) or RES2 (True).
     """
     if explicit:
-        # If + is first, this is RES2
-        if atom_name[0] == "+": 
+        # If > is first, this is RES2
+        if atom_name[0] == ">": 
             res_name = res2_name
         else:
             res_name = res1_name
@@ -847,24 +852,28 @@ def explicit_res(atom_name: str, res1_name: str, res2_name: str, explicit: bool)
 
     return explicit_res
 
-def write_atoms_link(atoms_names: list, itp_res1_file: str, itp_res2_file: str, res1_name: str, res2_name: str, link_filename: str, explicit: bool):
+def write_beginning_link(atoms_names: list, itp_res1_file: str, itp_res2_file: str, res1_name: str, res2_name: str, link_filename: str, explicit: bool):
     """ Write the beginning of the link.ff file and the atoms section. """
-
-    with open(link_filename, "w") as f:
-        f.write(f"; Link file created for Polyply using {itp_res1_file} and {itp_res2_file}, by {os.getlogin()} at {datetime.datetime.now()}\n\n") # Opening comment
+    with open(link_filename, "w") as f: 
+        f.write(f"; Link file created for Polyply using {itp_res1_file} and {itp_res2_file}, by {os.getlogin()} at {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\n\n") # Opening comment
         f.write("[ link ]\n")
         f.write(write_resnames(res1_name, res2_name, explicit)+"\n")
-        f.write("[ atoms ]\n")
 
-        for atom in atoms_names:
-            f.write(f"{atom:>4s}")
-            # If explicit: fill brackets. Else, leave empty
-            if explicit:
-                f.write(explicit_res(atom, res1_name, res2_name, explicit) + "\n")
-            else:
-                f.write(" { } \n")
+        write_atoms(atoms_names, res1_name, res2_name, f, explicit)
+        write_edges(edges_names, f)
 
-def write_bonded_terms_link(bonds_names: list, angles_names: list, dihedrals_names: list, imp_dihedrals_names: list, bonds_types: list, angles_types: list, dihedrals_types: list, imp_dihedrals_types: list, bonds_parameters: list, angles_parameters: list, dihedrals_parameters: list, imp_dihedrals_parameters: list, res1_name: str, res2_name: str, link_filename: str, explicit: bool):
+def write_atoms(atoms_names: list, res1_name: str, res2_name: str, f, explicit: bool):
+    """ Writes the atoms section. Under each [ link ] statement, prevents a KeyError if atoms mentioned in [ edges ] of that section are not present in the interaction. """
+    f.write("[ atoms ]\n")
+    for atom in atoms_names:
+        f.write(f"{atom:>4s}")
+        # If explicit: fill brackets. Else, leave empty
+        if explicit:
+            f.write(explicit_res(atom, res1_name, res2_name, explicit) + "\n")
+        else:
+            f.write(" { } \n")
+
+def write_bonded_terms_link(atoms_names: list, bonds_names: list, angles_names: list, dihedrals_names: list, imp_dihedrals_names: list, edges_names: list, bonds_types: list, angles_types: list, dihedrals_types: list, imp_dihedrals_types: list, bonds_parameters: list, angles_parameters: list, dihedrals_parameters: list, imp_dihedrals_parameters: list, res1_name: str, res2_name: str, link_filename: str, explicit: bool):
     """ Write the bonds, angles, and dihedrals sections in the link.ff file. """
 
     with open(link_filename, "a") as f:
@@ -885,10 +894,12 @@ def write_bonded_terms_link(bonds_names: list, angles_names: list, dihedrals_nam
                     f" ; {bonds_types[i][0]:>4s} - {bonds_types[i][1]:>4s}\n"
                     )
                 f.write(bond_line)
+        write_edges(edges_names, f)
             
         # ANGLES
         f.write("\n[ link ]\n")
         f.write(write_resnames(res1_name, res2_name, explicit)+"\n")
+        write_atoms(atoms_names, res1_name, res2_name, f, explicit)
         f.write("[ angles ]\n")
         for i, angle_name in enumerate(angles_names):
             if len(angles_parameters[i]) > 1:
@@ -902,11 +913,14 @@ def write_bonded_terms_link(bonds_names: list, angles_names: list, dihedrals_nam
                     f" ; {angles_types[i][0]:>4s} - {angles_types[i][1]:>4s} - {angles_types[i][2]:>4s}\n"
                     )
                 f.write(angle_line)
+        write_edges(edges_names, f)
 
         # DIHEDRALS: PROPER
         f.write("\n[ link ]\n")
         f.write(write_resnames(res1_name, res2_name, explicit)+"\n")
+        write_atoms(atoms_names, res1_name, res2_name, f, explicit)
         f.write("[ dihedrals ]\n")
+        f.write("; Proper dihedrals\n")
         for i, dihedral_name in enumerate(dihedrals_names):
             for j, dihedrals_parameter in enumerate(dihedrals_parameters[i]): # Multiple functions for one dihedral
                 if not dihedrals_parameter[2] == 8888: # If the phase is 8888, this was the discarded proper dihedral due to improper interference
@@ -923,6 +937,7 @@ def write_bonded_terms_link(bonds_names: list, angles_names: list, dihedrals_nam
 
         # DIHEDRALS: IMPROPER
         # (func 4 in Gromacs)
+        f.write("; Improper dihedrals\n")
         for i, imp_dihedral_name in enumerate(imp_dihedrals_names):
             if len(imp_dihedrals_parameters[i]) > 1:
                 print(f"Warning: More than one parameter set for IMPROPER dihedral name {imp_dihedral_name[0]}-{imp_dihedral_name[1]}-{imp_dihedral_name[2]}-{imp_dihedral_name[3]}, i.e. types {imp_dihedrals_types[i][0]}-{imp_dihedrals_types[i][1]}-{imp_dihedrals_types[i][2]}-{imp_dihedrals_types[i][3]}. This is unusual for IMPROPER dihedrals. Make sure there is no double counting.")
@@ -937,15 +952,17 @@ def write_bonded_terms_link(bonds_names: list, angles_names: list, dihedrals_nam
                     f"{imp_dihedrals_types[i][0]:>4s} - {imp_dihedrals_types[i][1]:>4s} - {imp_dihedrals_types[i][2]:>4s} - {imp_dihedrals_types[i][3]:>4s}\n"
                     )
                 f.write(imp_dihedral_line)
+        write_edges(edges_names, f)
 
 
-def write_pairs_edges_link(pairs_names: list, edges_names: list, res1_name: str, res2_name: str, link_filename: str, explicit: bool):
+def write_pairs_edges_link(atoms_names: list, pairs_names: list, edges_names: list, res1_name: str, res2_name: str, link_filename: str, explicit: bool):
     """ Writes the pairs and edges sections to the link.ff file. No parameters needed."""
 
     # Pairs
     with open(link_filename, "a") as f:
         f.write("\n[ link ]\n")
         f.write(write_resnames(res1_name, res2_name, explicit)+"\n")
+        write_atoms(atoms_names, res1_name, res2_name, f, explicit)
         f.write("[ pairs ]\n")
         for pair in pairs_names:
             pair_line = (
@@ -953,16 +970,43 @@ def write_pairs_edges_link(pairs_names: list, edges_names: list, res1_name: str,
                 f"{pair[1]:>6s}{explicit_res(pair[1], res1_name, res2_name, explicit)}"
                 f"{1:>4d}\n")
             f.write(pair_line)
+        write_edges(edges_names, f)
     
     # Edges
-    with open(link_filename, "a") as f:
-        f.write("\n[ link ]\n")
-        f.write(write_resnames(res1_name, res2_name, explicit)+"\n")
+    # Adjustment: edges should not be written for the atoms within a residue. Also works better if appended under every other link interaction.
+    #with open(link_filename, "a") as f:
+    #    f.write("\n[ link ]\n")
+    #    f.write(write_resnames(res1_name, res2_name, explicit)+"\n")
+    #    f.write("[ edges ]\n")
+    #    for edge in edges_names:
+    #        edge_line = (
+    #            f"{edge[0]:>4s}"
+    #            f"{edge[1]:>6s}\n")
+    #        f.write(edge_line)
+
+def write_edges(edges_names: list, link_filename_or_f):
+    """ Write the edge that crosses residues, called under every interaction type.
+        Either the link_filename can be provided as string, or the already opened file as f."""
+    edge_lines = []
+    for edge in edges_names:
+        edge_line = (
+            # resname attribute should NOT be appended here, as it prevents link recognition
+            f"{edge[0]:>4s}"
+            f"{edge[1]:>6s}\n")
+        edge_lines.append(edge_line)
+
+    if type(link_filename_or_f) == str:
+        # the filename was provided, write
+        link_filename = link_filename_or_f
+        with open(link_filename, "a") as f:
+            f.write("[ edges ]\n")
+            for edge_line in edge_lines:
+                f.write(edge_line)
+    else:
+        # f was provided
+        f = link_filename_or_f
         f.write("[ edges ]\n")
-        for edge in edges_names:
-            edge_line = (
-                f"{edge[0]:>4s}{explicit_res(edge[0], res1_name, res2_name, explicit)}"
-                f"{edge[1]:>6s}{explicit_res(edge[1], res1_name, res2_name, explicit)}\n")
+        for edge_line in edge_lines:
             f.write(edge_line)
 
 def write_resnames(res1_name: str, res2_name: str, explicit: bool) -> str:
@@ -1026,6 +1070,6 @@ if __name__ == "__main__":
     bonds_parameters, angles_parameters, dihedrals_parameters, imp_dihedrals_parameters = retrieve_bonded_parameters(bonds_types, angles_types, dihedrals_types, imp_dihedrals_types, parent_ff_file, ff_type)
     
     # Write the link file
-    write_atoms_link(atoms_names, itp_res1_file, itp_res2_file, res1_name, res2_name, link_filename, explicit)
-    write_bonded_terms_link(bonds_names, angles_names, dihedrals_names, imp_dihedrals_names, bonds_types, angles_types, dihedrals_types, imp_dihedrals_types, bonds_parameters, angles_parameters, dihedrals_parameters, imp_dihedrals_parameters, res1_name, res2_name, link_filename, explicit)
-    write_pairs_edges_link(pairs_names, edges_names, res1_name, res2_name, link_filename, explicit)
+    write_beginning_link(atoms_names, itp_res1_file, itp_res2_file, res1_name, res2_name, link_filename, explicit)
+    write_bonded_terms_link(atoms_names, bonds_names, angles_names, dihedrals_names, imp_dihedrals_names, edges_names, bonds_types, angles_types, dihedrals_types, imp_dihedrals_types, bonds_parameters, angles_parameters, dihedrals_parameters, imp_dihedrals_parameters, res1_name, res2_name, link_filename, explicit)
+    write_pairs_edges_link(atoms_names, pairs_names, edges_names, res1_name, res2_name, link_filename, explicit)
