@@ -10,25 +10,25 @@ import sys
 from pathlib import Path
 import datetime
 import os
+import argparse
 
 def load_input_command():
     """ Process the arguments given in the command line. """
-    # Inputs
-    if len(sys.argv) != 3:
-        print(f"Usage: {sys.argv[0]} <itp_res.ff> <capping_idx.txt>")
-        sys.exit(1)
-    
-    itp_res_file = Path(sys.argv[1])
-    capping_idx_file = Path(sys.argv[2])
-    
-    if not itp_res_file.is_file():
-        print(f"Error: itp_res.ff input file '{itp_res_file}' does not exist.")
-        sys.exit(1)
-    
-    if not capping_idx_file.is_file():
-        print(f"Error: capping_idx.txt input file '{capping_idx_file}' does not exist.")
-        sys.exit(1)
-    return itp_res_file, capping_idx_file
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("-i", "--itp-res", type=Path, required=True, help="Residue file (.itp) of which the capping atoms will be removed.")
+    parser.add_argument("-c", "--capping-idx", type=Path, required=True, help="File in which the capping atom indices are specified, each on a new line with a 1-based index.")
+
+    args = parser.parse_args()
+
+    # Make sure Paths exist
+    path_msg = "{} input file {} does not exist on this path."
+    if not args.itp_res.is_file():
+        raise FileNotFoundError(path_msg.format("itp-res", args.itp_res))
+    if not args.capping_idx.is_file():
+         raise FileNotFoundError(path_msg.format("capping-idx", args.capping_idx))
+
+    return args.itp_res, args.capping_idx
 
 # Functions
 def section_block(itp_lines: list, sections: dict, section_name: str) -> list:
