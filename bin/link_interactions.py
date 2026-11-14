@@ -536,29 +536,27 @@ def retrieve_bonded_parameters(bonds_types: list, angles_types: list, dihedrals_
 
                 if not ff_lines_element: # if empty (i.e. no parameter line found in force field file), report
                     noparam_error = True # Boolean for error at the end, since possibly interfering improper dihedrals make it ok
-                    try_wildcards = False # Boolean to see if wildcards were tried
+                    try_wildcards = False # Boolean to try X X wildcards for transferrable dihedrals. Not for bonds or angles
 
-                    if i == 2: # Proper dihedrals: look if involved in an improper dihedral. If not, try wildcards on edge atoms, eg X -c3-c3-X
+                    if i == 2: # Proper dihedrals: try wildcards on edge atoms, eg X -c3-c3-X. Else, look if involved in improper dihedral and report
+                        # Checking for proper dihedrals for these general dihedrals X ... X
+                        try_wildcards = True
+                        transferrable_dihedral_names = set()
+                        for formattedname_option in formattedname_list: # For all "options", make the names with wildcards
+                            transferrable_dihedral_name = "X -" + formattedname_option[3:5] + "-" + formattedname_option[6:8] + "-X " 
+                            transferrable_dihedral_names.add(transferrable_dihedral_name) # a set with all possibilities
 
-                        # Check if matching atoms with an improper dihedral
-                        atom_types_matches = []
-                        for imp_dihedrals_type in imp_dihedrals_types:
-                            atom_types_matches.append(sum((Counter(imp_dihedrals_type) & Counter(dihedrals_types[s])).values())) # Count number of matches between dihedral types and the imp dihedral types
-
-                        # From 3 matching atom types on, very probable that an improper dihedral is more adequate. Thus neglect this proper one.
-                        if any(atom_types_match >= 3 for atom_types_match in atom_types_matches):
-                            print(f"Note: proper dihedral {formattedname_option} was not found in {parent_ff_file}, but at least three atom types are involved in an improper dihedral. No action required.")
-                            ff_lines_element.append("8888 8888 8888 8888 8888 8888 8888 8888 8888 8888") # Appending junk numbers not to mess up order, but not written in ff (8888 detected when writing).
-                            noparam_error = False
-
-                        # These atoms are not involved in an improper dihedral. Only checking for proper dihedrals for these general dihedrals X ... X
-                        else: 
-                            try_wildcards = True
-                            transferrable_dihedral_names = set()
-                            for formattedname_option in formattedname_list: # For all "options", make the names with wildcards
-                                transferrable_dihedral_name = "X -" + formattedname_option[3:5] + "-" + formattedname_option[6:8] + "-X " 
-                                transferrable_dihedral_names.add(transferrable_dihedral_name) # a set with all possibilities
-
+                        # Check if matching atoms with an improper dihedral, if not transferrable were found
+                        if not transferrable_dihedral_names:
+                            atom_types_matches = []
+                            for imp_dihedrals_type in imp_dihedrals_types:
+                                atom_types_matches.append(sum((Counter(imp_dihedrals_type) & Counter(dihedrals_types[s])).values())) # Count number of matches between dihedral types and the imp dihedral types
+                        
+                            # From 3 matching atom types on, very probable that an improper dihedral is more adequate. Thus neglecting this proper one is probably fine.
+                            if any(atom_types_match >= 3 for atom_types_match in atom_types_matches):
+                                print(f"Note: proper dihedral {formattedname_option} was not found in {parent_ff_file}, neither with wildcards, but at least three atom types are involved in an improper dihedral. No action required.")
+                                ff_lines_element.append("8888 8888 8888 8888 8888 8888 8888 8888 8888 8888") # Appending junk numbers not to mess up order, but not written in ff (8888 detected when writing).
+                                noparam_error = False
 
                     elif i == 3: # Improper dihedrals: check for wildcards like eg X -X -c -X
                         try_wildcards = True
@@ -711,32 +709,22 @@ def retrieve_bonded_parameters(bonds_types: list, angles_types: list, dihedrals_
 
                 if not ff_lines_element: # if empty (i.e. no parameter line found in force field file), report
                     noparam_error = True # Boolean for error at the end, since possibly interfering improper dihedrals make it ok
-                    try_wildcards = False # Boolean to see if wildcards were tried
+                    try_wildcards = False # Boolean to try X X wildcards for transferrable dihedrals. Not for bonds or angles
 
-                    if i == 2: # Proper dihedrals: look if involved in an improper dihedral. If not, try wildcards on edge atoms, eg X c3 c3 X
-
+                    if i == 2: # Proper dihedrals: try wildcards on edge atoms, eg X c3 c3 X. Else, look if involved in an improper dihedral. 
+                        try_wildcards = True
                         # Check if matching atoms with an improper dihedral
                         atom_types_matches = []
                         for imp_dihedrals_type in imp_dihedrals_types:
                             atom_types_matches.append(sum((Counter(imp_dihedrals_type) & Counter(atoms_inttype)).values())) # Count number of matches between dihedral types and the imp dihedral types
-
-                        # From 3 matching atom types on, very probable that an improper dihedral is more adequate. Thus neglect this proper one.
-                        if any(atom_types_match >= 3 for atom_types_match in atom_types_matches):
-                            print(f"Note: proper dihedral {formattedname} was not found in {parent_ff_file}, but at least three atom types are involved in an improper dihedral. No action required.")
-                            ff_lines_element.append("8888 8888 8888 8888 8888 8888 8888 8888 8888 8888") # Appending junk numbers not to mess up order, but not written in ff (8888 detected when writing).
-                            noparam_error = False
-
-                        # These atoms are not involved in an improper dihedral. Only checking for proper dihedrals for these general dihedrals X ... X
-                        else: 
-                            try_wildcards = True
-                            # Transferrable dihedral names are not premade now: logic with X and X is made on the spot further
+                        # Transferrable dihedral names are not premade now: logic with X and X is made on the spot further
 
                     elif i == 3: # Improper dihedrals: check for wildcards like eg X -X -c -X
                         try_wildcards = True
                         # Transferrable dihedral names are not premade now: logic with X X C X is made on the spot further
 
-                    if try_wildcards: # For proper and improper dihedrals, look for wildcards matching (X ... X)                         
-
+                    # For proper and improper dihedrals, look for wildcards matching (X ... X)                         
+                    if try_wildcards:
                         for line in parent_ff_lines: # Look through lines again
                             line_list = line.split() # Split columns
                             line_types = line_list[:4] # All dihedrals have 4 atoms involved, so up to :4 are the types
@@ -779,8 +767,15 @@ def retrieve_bonded_parameters(bonds_types: list, angles_types: list, dihedrals_
                                         ff_lines_element.append(line)
                                         transferrable_dihedral_name_match = f"{line_types[0]} - {line_types[1]} - {line_types[2]} - {line_types[3]}" # Store name for printing
 
-                        if ff_lines_element: # Check if wildcards helped
-                            print(f"Note: no parameters found for {inttypes_names[i]} {formattedname} in {parent_ff_file}, but the transferrable dihedral {transferrable_dihedral_name_match} was selected.")
+                    if ff_lines_element: # Check if wildcards helped
+                        print(f"Note: no parameters found for {inttypes_names[i]} {formattedname} in {parent_ff_file}, but the transferrable dihedral {transferrable_dihedral_name_match} was selected.")
+                        noparam_error = False
+
+                    if not ff_lines_element and i == 2:
+                        # From 3 matching atom types on, very probable that an improper dihedral is more adequate. Thus neglecting this proper one is ok probably.
+                        if any(atom_types_match >= 3 for atom_types_match in atom_types_matches):
+                            print(f"Note: proper dihedral {formattedname} was not found in {parent_ff_file}, but at least three atom types are involved in an improper dihedral. No action required.")
+                            ff_lines_element.append("8888 8888 8888 8888 8888 8888 8888 8888 8888 8888") # Appending junk numbers not to mess up order, but not written in ff (8888 detected when writing).
                             noparam_error = False
 
                     if noparam_error:    
