@@ -14,6 +14,7 @@ import copy
 import re
 from collections import Counter
 import argparse
+from itertools import permutations, combinations
 from remove_caps_ff import section_block, read_itp_res, find_nonint_lines 
 
 # Functions
@@ -427,10 +428,9 @@ def retrieve_bonded_parameters(bonds_types: list, angles_types: list, dihedrals_
     inttypes_names = ["bond", "angle", "proper dihedral", "improper dihedral"]
     ff_lines = [[], [], [], []] # The relevant force field lines for each interaction. A list of lists since multiple dihedrals are possible, but also list of lists for bonds and angles, yet warning when more.
 
-    with open(parent_ff_file, 'r') as f: # Store the file in a list
-        parent_ff_lines = f.readlines()
-
     if ff_type == "amber": # AMBER style of force field
+        with open(parent_ff_file, "r") as f: # Amber: still read parent lines every time. GROMACS: dict implementation.
+            parent_ff_lines = f.readlines()
 
         for i, inttype in enumerate(inttypes): 
             # Reword in AMBER style: eg c3-c3-cc-cd
@@ -544,6 +544,8 @@ def retrieve_bonded_parameters(bonds_types: list, angles_types: list, dihedrals_
                         for formattedname_option in formattedname_list: # For all "options", make the names with wildcards
                             transferrable_dihedral_name = "X -" + formattedname_option[3:5] + "-" + formattedname_option[6:8] + "-X " 
                             transferrable_dihedral_names.add(transferrable_dihedral_name) # a set with all possibilities
+                            transferrable_dihedral_name = "X -" + formattedname_option[6:8] + "-" + formattedname_option[3:5] + "-X " 
+                            transferrable_dihedral_names.add(transferrable_dihedral_name) # a set with all possibilities
 
                         # Check if matching atoms with an improper dihedral, if not transferrable were found
                         if not transferrable_dihedral_names:
@@ -644,6 +646,9 @@ def retrieve_bonded_parameters(bonds_types: list, angles_types: list, dihedrals_
 
         improper_funcs = [4] # Only func 4 supported now for improper dihedrals
         proper_funcs = [9] # Only func 9 supported now for proper dihedrals
+        other_funcs = {0: 1, 1: 1, 2: 9, 3: 4} # Small dictionary for func in GROMACS
+
+        parent_ff_dict = read_gromacs_parent_ff(parent_ff_file, proper_funcs, improper_funcs)
 
         for i, inttype in enumerate(inttypes): 
             # Gromacs works in columns, so no strings need to be formed for the formatted interaction names
@@ -655,57 +660,37 @@ def retrieve_bonded_parameters(bonds_types: list, angles_types: list, dihedrals_
                     formattedname = formattedname + "-" + atom
                 formattedname = formattedname[1:] # Remove leading - 
 
-                for line in parent_ff_lines:
-                    if i == 3:
-                        func_idx = i+2-1
-                    else:
-                        func_idx = i+2
-
-                    line_list = line.split() # Split columns
-                    line_types = line_list[:func_idx] # They all have i+2 number of atoms involved, so up to :i+2 are the types (improper i+2-1)
-                    types_match = False
-
-                    # First check: see if these are parameters for the right type, if the column next to the types is the func column
-                    try:
-                        func = line_list[func_idx]
-                    except IndexError:
-                        func = None # Empty if not a line with func there, not a good parameter line
-
-                    if func and func.isdigit(): # If not, this is an atom type and eg angle parameters instead of bond
-                        func = int(func)
-
-                        # Basic requirement for all: all atom types match
-                        if Counter(atoms_inttype) == Counter(line_types): 
-
-                            if i == 0: # Bonds: no order necessary, if match it is ok
-                                if func == 1: # Only type 1 bonds in this implementation
-                                    types_match = True
-                                 
-                            elif i == 1: # Angles: middle atom needs to match too
-                                if func == 1: # Only type 1 angles in this implementation
-                                    if line_list[1] == atoms_inttype[1]:
-                                        types_match = True
-    
-                            elif i == 2: # Proper dihedrals: middle atoms need to match and with the correct bordering types 
-                                if func in proper_funcs: # Only type 9 proper dihedrals in this implementation 
-                                    if Counter(atoms_inttype[1:3]) == Counter(line_list[1:3]): # If two middle ones match
-                                        if atoms_inttype[1] == line_list[1]: # If first middle one is on the same place in ff
-                                            if atoms_inttype[0] == line_list[0]: # If first border is also the same, then all match
-                                                types_match = True
-                                        else: # First middle one is second middle in ff
-                                            if atoms_inttype[0] == line_list[3]: # If first border is last in ff, all match
-                                                types_match = True
-    
-                            elif i == 3: # Improper dihedrals: matching AMBER-style, putting the center atom as the third X X C X
-                                if func in improper_funcs: # Only type 4 improper dihedrals in this implementation 
-                                    border_atoms_types = [atoms_inttype[col_nr] for col_nr in [0, 1, 3]]
-                                    border_atoms_ff = [line_list[col_nr] for col_nr in [0, 1, 3]]
-                                    if Counter(border_atoms_types) == Counter(border_atoms_ff):
-                                        types_match = True
-
-                            if types_match:
-                                ff_lines_element.append(line)
-
+                # Check whether in dict. Forward and inverse atom order works for bonds (1), angles (2), and proper dihedrals (3). Other options for impropers (4) preserving penultimate atom.
+                ff_line = ""
+                func = other_funcs[i]
+                dict_key_1 = tuple(atoms_inttype + [func]) 
+                dict_key_2 = tuple(atoms_inttype[::-1] + [func])
+                # Bonds and angles: append element, not the list
+                if i in [0, 1]:
+                    if dict_key_1 in parent_ff_dict:
+                        ff_lines_element.append(parent_ff_dict[dict_key_1][0])
+                    # Inverse option if not found
+                    if not ff_lines_element and not dict_key_1 == dict_key_2: # if symmetric, I will get unsensible doubles
+                        if dict_key_2 in parent_ff_dict:
+                            ff_lines_element.append(parent_ff_dict[dict_key_2][0])
+                # Dihedrals
+                if i == 2:
+                    if dict_key_1 in parent_ff_dict:
+                        for entry in parent_ff_dict[dict_key_1]:
+                            ff_lines_element.append(entry)
+                    if dict_key_2 in parent_ff_dict and not dict_key_1 == dict_key_2: # if symmetric, I will get unsensible doubles
+                        for entry in parent_ff_dict[dict_key_2]:
+                            ff_lines_element.append(entry)
+                elif i == 3:
+                    # Improper dihedrals: only func 4: eg X X C X
+                    fixed_idx = 2 # idx 2 does not move in func 4
+                    nonfixed_atoms = atoms_inttype[:fixed_idx] + [atoms_inttype[fixed_idx + 1]]
+                    dict_key_combinations = [p[:fixed_idx] + (atoms_inttype[fixed_idx],) + (p[fixed_idx],) + (func,) for p in permutations(nonfixed_atoms)] # Return tuples with combinations
+                    for dict_key in set(dict_key_combinations):
+                        if dict_key in parent_ff_dict:
+                            for entry in parent_ff_dict[dict_key]:
+                                ff_lines_element.append(entry)
+                
                 if not ff_lines_element: # if empty (i.e. no parameter line found in force field file), report
                     noparam_error = True # Boolean for error at the end, since possibly interfering improper dihedrals make it ok
                     try_wildcards = False # Boolean to try X X wildcards for transferrable dihedrals. Not for bonds or angles
@@ -723,48 +708,42 @@ def retrieve_bonded_parameters(bonds_types: list, angles_types: list, dihedrals_
                         # Transferrable dihedral names are not premade now: logic with X X C X is made on the spot further
 
                     # For proper and improper dihedrals, look for wildcards matching (X ... X)                         
+                    types_match = False
                     if try_wildcards:
-                        for line in parent_ff_lines: # Look through lines again
-                            line_list = line.split() # Split columns
-                            line_types = line_list[:4] # All dihedrals have 4 atoms involved, so up to :4 are the types
-                            types_match = False
-        
-                            # First check: see if these are parameters for the right type, if the column next to the types is the func column
-                            try:
-                                func = line_list[4]
-                            except IndexError:
-                                func = None
+                        # Proper dihedrals
+                        if i == 2:
+                            # Make wildcards with outer atoms X .. .. X. Only func 9 supported now.
+                            dict_key_1 = ("X", atoms_inttype[1], atoms_inttype[2], "X", 9)
+                            dict_key_2 = ("X", atoms_inttype[2], atoms_inttype[1], "X", 9)
+                            if dict_key_1 in parent_ff_dict:
+                                ff_line = parent_ff_dict[dict_key_1]
+                                types_match = True
+                            elif dict_key_2 in parent_ff_dict:
+                                ff_line = parent_ff_dict[dict_key_2]
+                                types_match = True
 
-                            if func and func.isdigit(): # If not, these are not dihedral but eg angle parameters
-                                func = int(func)
+                        # Improper dihedrals
+                        elif i == 3:
+                            # Use the permutations and add wildcards up to X X C X 
+                            improper_wildcards = set()
+                            for permut in dict_key_combinations:
+                                indices = [j for j in range(len(permut)) if j != fixed_idx and j != len(permut) - 1]
+                                for r in range(1, len(indices) + 1):
+                                    for selected in combinations(indices, r):
+                                        wildcarded = tuple("X" if j in selected else x
+                                                            for j, x in enumerate(permut))
+                                        improper_wildcards.add(wildcarded)
+                            # Test the wildcards
+                            for wildcard in improper_wildcards:
+                                if wildcard in parent_ff_dict:
+                                    ff_line = parent_ff_dict[wildcard]
+                                    types_match = True
 
-                                # Requirement toned down: not all atom types have to match now. Starting from one.
-                                atom_matches = sum((Counter(line_types) & Counter(atoms_inttype)).values())
-                                if atom_matches >= 1 and "X" in line_types: # If at least one match and a line with wildcards
-                                    
-                                    # Proper dihedrals
-                                    if i == 2:
-                                        same_middle_atoms = Counter(atoms_inttype[1:3]) == Counter(line_types[1:3])
-                                        outer_X = line_types[0] == "X" and line_types[3] == "X"
-                                        is_proper = func in proper_funcs
-                                        if is_proper and same_middle_atoms and outer_X:
-                                            types_match = True
-
-                                    # Improper dihedrals
-                                    elif i == 3:
-                                        same_center = atoms_inttype[2] == line_types[2] # Matching AMBER-style, center needs to be third atom
-                                        # no need to check for X A B X, since func 4 makes sure it is not proper dihedral
-                                        number_X = Counter(line_types)["X"]
-                                        number_match = sum((Counter(atoms_inttype) & Counter(line_types)).values())
-                                        no_unmatching_types = number_X + number_match == 4
-
-                                        is_improper = func in improper_funcs
-                                        if is_improper and same_center and no_unmatching_types:
-                                            types_match = True
-
-                                    if types_match:
-                                        ff_lines_element.append(line)
-                                        transferrable_dihedral_name_match = f"{line_types[0]} - {line_types[1]} - {line_types[2]} - {line_types[3]}" # Store name for printing
+                        if types_match:
+                            for ff_line_el in ff_line:
+                                ff_lines_element.append(ff_line_el)
+                                line_types = ff_line_el.split()
+                                transferrable_dihedral_name_match = f"{line_types[0]} - {line_types[1]} - {line_types[2]} - {line_types[3]}" # Store name for printing
 
                     if ff_lines_element: # Check if wildcards helped
                         print(f"Note: no parameters found for {inttypes_names[i]} {formattedname} in {parent_ff_file}, but the transferrable dihedral {transferrable_dihedral_name_match} was selected.")
@@ -822,6 +801,51 @@ def retrieve_bonded_parameters(bonds_types: list, angles_types: list, dihedrals_
                     imp_dihedrals_parameters.append(parameters)
 
     return bonds_parameters, angles_parameters, dihedrals_parameters, imp_dihedrals_parameters 
+
+def read_gromacs_parent_ff(parent_ff_file: Path, proper_funcs: list, improper_funcs: list) -> dict:
+    """ Read the parent force field in GROMACS style and return a dictionary of (ATOM*, inttype) -> [line],
+        with inttype = 1 bond, 2 angle, 3 proper dihedral, 4 improper dihedral.
+        Only function types of proper dihedrals and improper dihedrals are allowed that are specified in their respective lists, e.g. 4 and 9.
+        With multiple matches, the list contains multiple lines."""
+    parent_ff_dict = {} # dictionary of parent_ff_file
+    with open(parent_ff_file, 'r') as f: # Store the file in a list
+        parent_ff_lines = f.readlines()
+
+    # Read line per line and store in dict
+    for line in parent_ff_lines:
+        # Do not read any comments in ";" or "#", only read if then not empty. Dont read
+        line = line.split("#")[0]
+        line = line.split(";")[0]
+        if line.lstrip():
+            line_list = line.split()
+            # If an interaction type is indicated, store for next line
+            if line_list[0] == "[":
+                inttype = line_list[1]
+                if inttype not in ["bondtypes", "angletypes", "dihedraltypes"]:
+                    raise ValueError(f"Unrecognized interaction type {line_list[0]!r} in parent force field file {parent_ff_file}. Exiting.")
+                else:
+                    continue # Go to next line
+            if inttype == "bondtypes":
+                atom1, atom2, func = line_list[0], line_list[1], int(line_list[2])
+                if not func == 1:
+                    raise ValueError(f"Bond type not of function 1 in parent force field file {parent_ff_file}. Not allowed. Line in question:\n{line}") 
+                parent_ff_dict[(atom1, atom2, func)] = [line]
+            elif inttype == "angletypes":
+                atom1, atom2, atom3, func = line_list[0], line_list[1], line_list[2], int(line_list[3])
+                if not func == 1:
+                    raise ValueError(f"Angle type not of function 1 in parent force field file {parent_ff_file}. Not allowed. Line in question:\n{line}")
+                parent_ff_dict[(atom1, atom2, atom3, func)] = [line]
+            elif inttype == "dihedraltypes":
+                atom1, atom2, atom3, atom4, func = line_list[0], line_list[1], line_list[2], line_list[3], int(line_list[4])
+                if not func in proper_funcs and not func in improper_funcs:
+                    raise ValueError(f"Dihedral type not of function {proper_funcs!r} or {improper_funcs!r} in parent force field file {parent_ff_file}. Not allowed and cannot be used. Line in question:\n{line}")
+                key = (atom1, atom2, atom3, atom4, func)
+                if key in parent_ff_dict: # Make list of multiple entries if they exist, for this dihedral
+                    new_value = parent_ff_dict[key] + [line] 
+                    parent_ff_dict[key] = new_value
+                else:
+                    parent_ff_dict[key] = [line]
+    return parent_ff_dict
 
 
 def explicit_res(atom_name: str, res1_name: str, res2_name: str, explicit: bool):
