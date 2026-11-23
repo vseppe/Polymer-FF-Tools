@@ -62,10 +62,10 @@ def load_input_command():
 
     return args.itp_res1, args.itp_res2, args.res1_name, args.res2_name, args.connection_atomnames, args.parent_ff, args.explicit
 
-def ff_type(parent_ff_file: str) -> str:
+def ff_type(parent_ff_file: Path) -> str:
     """ Determines the type of parent force field file. Either AMBER (.dat) or GROMACS (.itp)."""
 
-    extension_parent_ff = str(parent_ff_file)[-4:]
+    extension_parent_ff = parent_ff_file.suffix
 
     if extension_parent_ff == ".dat":
         ff_type = "amber"
@@ -417,11 +417,10 @@ def get_atom_types_from_names(bonds_names: list, angles_names: list, dihedrals_n
 
     return bonds_types, angles_types, dihedrals_types, imp_dihedrals_types
 
-def retrieve_bonded_parameters(bonds_types: list, angles_types: list, dihedrals_types: list, imp_dihedrals_types: list, parent_ff_file: str, ff_type: str):
+def retrieve_bonded_parameters(bonds_types: list, angles_types: list, dihedrals_types: list, imp_dihedrals_types: list, parent_ff_file: Path, ff_type: str):
     """ Looks into the parent force field and retrieves the parameters for bonds, angles, dihedrals for the corresponding atom types. """
 
     bonds_parameters, angles_parameters, dihedrals_parameters, imp_dihedrals_parameters = [], [], [], []
-    extension_parent_ff = str(parent_ff_file)[-4:]
 
     inttypes = [bonds_types, angles_types, dihedrals_types, imp_dihedrals_types]    
     strnames_inttypes = [[], [], [], [], []] # The formatted name strings of each interaction type to be sought. Eg 'c3-c3-cc-cd'. For GROMACS this is only used for printing purposes, parameters are used. 
